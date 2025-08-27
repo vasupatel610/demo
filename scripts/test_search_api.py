@@ -765,6 +765,42 @@ def get_field_analysis():
         "dataset_shape": INDEX.df.shape
     }
 
+from fastapi import Query
+df = pd.read_csv("/home/artisans15/projects/fashion_retail_analytics/data/raw/myntra_products_catalog.csv")
+
+@app.get("/suggest")
+def suggest_products(query: str = Query(..., min_length=1)):
+    if not query.strip():
+        return []
+    
+    # Search in product_name and product_description
+    mask = (
+        df["product_name"].str.contains(query, case=False, na=False) |
+        df["product_description"].str.contains(query, case=False, na=False)
+    )
+    matched = df[mask].head(10)  # limit for speed
+    return matched["product_name"].tolist()
+
+# from fastapi import FastAPI, Query
+# import pandas as pd
+
+# # Load dataset
+# df = pd.read_csv("/home/artisans15/projects/fashion_retail_analytics/data/raw/myntra_products_catalog.csv")
+
+# @app.get("/suggest")
+# def suggest_products(query: str = Query(..., min_length=1)):
+#     if not query.strip():
+#         return []
+    
+#     # Search in product_name and product_description
+#     mask = (
+#         df["product_name"].str.contains(query, case=False, na=False) |
+#         df["product_description"].str.contains(query, case=False, na=False)
+#     )
+#     matched = df[mask].head(10)  # limit for speed
+#     return matched["product_name"].tolist()
+
+
 @app.get("/")
 def root():
     """Root endpoint with API info"""
@@ -787,6 +823,7 @@ def root():
             "docs": "/docs"
         }
     }
+
 
 if __name__ == "__main__":
     import uvicorn
