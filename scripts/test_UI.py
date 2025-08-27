@@ -1,8 +1,8 @@
 # app.py ── Streamlit UI for the FastAPI search service
 import streamlit as st
 import requests
-import pandas as pd
-from difflib import SequenceMatcher   # 🔑 for similarity check
+import re
+from collections import Counter
 
 # -------------------------------------------------------------------
 # 1.  Configuration
@@ -68,39 +68,25 @@ query = st.text_input(
     key="search_input"
 )
 
-# Other controls for search parameters
+# Control for limiting results
 top_k = st.number_input(
-    "Results", 
+    "Show top results", 
     min_value=1, 
-    max_value=50, 
-    value=10, 
+    max_value=200, 
+    value=20, 
     step=1
-)
-alpha = st.slider(
-    "Semantic weight (α)", 
-    0.0, 
-    1.0, 
-    value=status.get("embedding_method") == "groq" and 0.7 or 0.3, 
-    step=0.05
 )
 
 # -------------------------------------------------------------------
 # 4.  Call API and display results
 # -------------------------------------------------------------------
 
-def search_api(q, k, a):
-    """Makes a POST request to the search API."""
-    payload = {"query": q, "top_k": k, "alpha": a}
-    r = requests.post(SEARCH_EP, json=payload, timeout=20)
+def search_api(q):
+    """Makes a POST request to the search API (fetches all results)."""
+    payload = {"query": q, "top_k": 200}   # fetch max possible
+    r = requests.post(SEARCH_EP, json=payload, timeout=30)
     r.raise_for_status()
     return r.json()
-
-def text_similarity(a: str, b: str) -> float:
-    """Compute simple similarity between two strings."""
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-import re
-from collections import Counter
 
 def rerank_results(hits, query):
     """Re-rank hits based on keyword overlap between query and product fields."""
@@ -129,15 +115,18 @@ def rerank_results(hits, query):
     # Sort descending by local_score
     return sorted(hits, key=lambda x: x["local_score"], reverse=True)
 
+# -------------------------------------------------------------------
+# 5.  Run search + display
+# -------------------------------------------------------------------
 if query: # Only run a search if the query is not empty
     with st.spinner("Searching…"):
         try:
-            res = search_api(query, int(top_k), float(alpha))
+            res = search_api(query)
         except Exception as e:
             st.error(f"API call failed: {e}")
             st.stop()
 
-    hits = res["results"]
+    hits = res.get("results", [])
 
     # 🔑 Re-rank using query vs product_name + description
     hits = rerank_results(hits, query)
@@ -145,19 +134,21 @@ if query: # Only run a search if the query is not empty
     if not hits:
         st.info("No matches found.")
     else:
-        st.success(f"{res['total_results']} results (method: {res['search_method']}, reranked locally)")
+        st.success(f"Fetched {len(hits)} results (reranked locally)")
 
-        for i, h in enumerate(hits):
-            st.markdown("---")
+        # Only display top_k after reranking
+        hits = hits[:top_k]
+
+        for i, h in enumerate(hits, 1):
+            st.markdown(f"---\n### {i}. {h.get('product_name')}")
             col1, col2 = st.columns([1, 4])
 
             with col1:
-                st.metric("Local Similarity", f"{h['local_score']:.3f}")
+                st.metric("Score", f"{h['local_score']:.2f}")
                 st.metric("Price", f"₹{h['price']:,.0f}")
                 
             with col2:
-                st.markdown(f"#### {h.get('highlighted_product_name', h['product_name'])}", unsafe_allow_html=True)
-                st.markdown(h.get('highlighted_product_description', h['product_description']), unsafe_allow_html=True)
+                st.markdown(h.get('product_description', "—"))
                 
                 if h.get("enhanced_fields"):
                     fields_str = " | ".join([f"**{k}**: {v}" for k, v in h["enhanced_fields"].items()])
@@ -165,6 +156,7 @@ if query: # Only run a search if the query is not empty
         
         with st.expander("Field analysis (from back-end)"):
             st.json(res.get("field_analysis", {}))
+
 
 
 # # app.py ── Streamlit UI for the FastAPI search service
