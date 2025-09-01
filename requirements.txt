@@ -13,3 +13,4 @@ requests
 nest_asyncio
 fast_autocomplete
 fast-autocomplete[pylev]
+rapidfuzz
