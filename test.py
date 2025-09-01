@@ -297,7 +297,7 @@ def get_contextual_suggestions(query, category_hint=None, gender_hint=None):
 #     'socks': ['socks', 'anklets', 'length', 'pack', 'ankle', 'assorted', 'mouth']
 # }
     
-#     csv_path = "/data/raw/myntra_products_catalog.csv"
+#     csv_path = "data/raw/myntra_products_catalog.csv"  
 #     if os.path.exists(csv_path):
 #         try:
 #             df = pd.read_csv(csv_path).head(20000)
@@ -483,7 +483,7 @@ def initialize_autocomplete():
     
     words = {}
     
-    csv_path = "/data/raw/myntra_products_catalog.csv"
+    csv_path = "data/raw/myntra_products_catalog.csv"
     if os.path.exists(csv_path):
         try:
             df = pd.read_csv(csv_path).head(20000)
@@ -592,9 +592,9 @@ def initialize_autocomplete():
 all_product_names = []
 product_metadata = {}
 
-if os.path.exists("/data/raw/myntra_products_catalog.csv"):
+if os.path.exists("data/raw/myntra_products_catalog.csv"):
     try:
-        df = pd.read_csv("/data/raw/myntra_products_catalog.csv").head(20000)
+        df = pd.read_csv("data/raw/myntra_products_catalog.csv").head(20000)
         all_product_names = df['product_name'].dropna().astype(str).str.lower().unique().tolist()
         
         # Build metadata for products
