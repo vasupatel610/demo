@@ -11,3 +11,4 @@ unidecode
 streamlit
 requests
 nest_asyncio
+fast_autocomplete
